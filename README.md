@@ -6,3 +6,4 @@ Using BPnP is easy. Just add the following line in your code
 import BPnP
 bpnp = BPnP.BPnP.apply
 ````
+Then you can use it as any autograd function in Pytorch.
