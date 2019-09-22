@@ -51,7 +51,7 @@ class BPnP(torch.autograd.Function):
             J_fz = torch.zeros(m,3*n, device=device)
             J_fK = torch.zeros(m, 9, device=device)
 
-            pts2d_flat = pts2d[i].clone().view(-1).detach().requires_grad_()             ############!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+            pts2d_flat = pts2d[i].clone().view(-1).detach().requires_grad_()             
             P_6d_flat = P_6d[i].clone().view(-1).detach().requires_grad_()
             pts3d_flat = pts3d.clone().view(-1).detach().requires_grad_()
             K_flat = K.clone().view(-1).detach().requires_grad_()
