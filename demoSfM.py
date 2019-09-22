@@ -17,8 +17,8 @@ K = torch.cuda.FloatTensor(
      [0, 0, 1]]
 )
 
-poses = loadmat('poses.mat')
-duck = loadmat('duck_mesh.mat')
+poses = loadmat('demo_data/poses.mat')
+duck = loadmat('demo_data/duck_mesh.mat')
 n = 1000
 pts3d = torch.cuda.FloatTensor(duck['pts3d'])[0:n,:]*pl
 pts3d_h = torch.cat((pts3d, torch.ones(n, 1, device='cuda')), dim=-1)
