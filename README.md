@@ -1,4 +1,10 @@
 # BPnP
+
+## Install
+
+`bash requirements.sh`
+
+
 ## Back-propagatable PnP
 
 Using BPnP is easy. Just add the following line in your code
