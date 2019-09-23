@@ -6,7 +6,7 @@ import math
 
 class BPnP(torch.autograd.Function):
     """
-    Back-propagatable PnP
+    Back-propagatable PnP @@@@@@@@@@@@@@@@@@@@@@@@@@
     """
     @staticmethod
     def forward(ctx, pts2d, pts3d, K, ini_pose=None):
