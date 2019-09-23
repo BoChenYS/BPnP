@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import torch.nn as nn
 import BPnP
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -46,7 +45,7 @@ track_pts3d = np.empty([ite,n,3])
 
 for i in range(ite):
 
-    pts3d_out = model(torch.ones(1,3,7,7, device='cuda')).view(n,3)
+    pts3d_out = model(torch.ones(1,3,32,32, device='cuda')).view(n,3)
     P_out = bpnp(pts2d, pts3d_out, K, ini_pose)
     pts2d_pro = BPnP.batch_project(P_out,pts3d_out,K)
     loss = ((pts2d_pro - pts2d)**2).sum()
@@ -62,10 +61,10 @@ for i in range(ite):
 
     if loss.item() < 0.00000001:
         break
-    # if pre_loss - loss.item() < 1e-10:
-    #     jjj -= 1
-    # if jjj == 0:
-    #     break
+    if pre_loss - loss.item() < 1e-10:
+        jjj -= 1
+    if jjj == 0:
+        break
 
     ini_pose = P_out.detach()
     pre_loss = loss.item()

@@ -2,31 +2,30 @@ import torch
 import cv2 as cv
 import numpy as np
 import kornia as kn
-import math
 
 class BPnP(torch.autograd.Function):
     """
-    Back-propagatable PnP @@@@@@@@@@@@@@@@@@@@@@@@@@
+    Back-propagatable PnP
     """
     @staticmethod
     def forward(ctx, pts2d, pts3d, K, ini_pose=None):
         bs = pts2d.size(0)
         n = pts2d.size(1)
         device = pts2d.device
-        pts3d_UMat = cv.UMat(np.array(pts3d.detach().cpu()))
-        K_UMat = cv.UMat(np.array(K.cpu()))
+        pts3d_np = np.array(pts3d.detach().cpu())
+        K_np = np.array(K.cpu())
         P_6d = torch.zeros(bs,6,device=device)
 
         for i in range(bs):
-            pts2d_UMat = cv.UMat(np.ascontiguousarray(pts2d[i].detach().cpu()).reshape((n,1,2)))
+            pts2d_i_np = np.ascontiguousarray(pts2d[i].detach().cpu()).reshape((n,1,2))
             if ini_pose is None:
-                _, rvec0, T0, _ = cv.solvePnPRansac(objectPoints=pts3d_UMat, imagePoints=pts2d_UMat, cameraMatrix=K_UMat, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, confidence=0.9999 ,reprojectionError=1)
+                _, rvec0, T0, _ = cv.solvePnPRansac(objectPoints=pts3d_np, imagePoints=pts2d_i_np, cameraMatrix=K_np, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, confidence=0.9999 ,reprojectionError=1)
             else:
-                rvec0 = cv.UMat(np.array(ini_pose[i, 0:3].cpu().view(3, 1)))
-                T0 = cv.UMat(np.array(ini_pose[i, 3:6].cpu().view(3, 1)))
-            _, rvec, T = cv.solvePnP(objectPoints=pts3d_UMat, imagePoints=pts2d_UMat, cameraMatrix=K_UMat, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, useExtrinsicGuess=True, rvec=rvec0, tvec=T0)
-            angle_axis = torch.tensor(rvec.get(),device=device,dtype=torch.float).view(1, 3)
-            T = torch.tensor(T.get(),device=device,dtype=torch.float).view(1, 3)
+                rvec0 = np.array(ini_pose[i, 0:3].cpu().view(3, 1))
+                T0 = np.array(ini_pose[i, 3:6].cpu().view(3, 1))
+            _, rvec, T = cv.solvePnP(objectPoints=pts3d_np, imagePoints=pts2d_i_np, cameraMatrix=K_np, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, useExtrinsicGuess=True, rvec=rvec0, tvec=T0)
+            angle_axis = torch.tensor(rvec,device=device,dtype=torch.float).view(1, 3)
+            T = torch.tensor(T,device=device,dtype=torch.float).view(1, 3)
             P_6d[i,:] = torch.cat((angle_axis,T),dim=-1)
 
         ctx.save_for_backward(pts2d,P_6d,pts3d,K)
