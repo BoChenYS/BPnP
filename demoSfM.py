@@ -62,10 +62,10 @@ for i in range(ite):
 
     if loss.item() < 0.00000001:
         break
-    if pre_loss - loss.item() < 1e-10:
-        jjj -= 1
-    if jjj == 0:
-        break
+    # if pre_loss - loss.item() < 1e-10:
+    #     jjj -= 1
+    # if jjj == 0:
+    #     break
 
     ini_pose = P_out.detach()
     pre_loss = loss.item()
