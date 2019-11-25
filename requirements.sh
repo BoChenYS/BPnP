@@ -13,7 +13,6 @@ conda activate bpnp
 which python
 
 ########################### install deps env ###################################
-conda install -y -c conda-forge ipython ninja cython matplotlib tqdm requests six scipy
-conda install -c dllehr opencv
+conda install -y -c conda-forge ipython ninja cython matplotlib opencv=3.4 tqdm requests six scipy
 conda install -y -c pytorch     pytorch torchvision cudatoolkit=9.0
 pip install kornia
