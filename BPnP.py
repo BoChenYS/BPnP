@@ -87,11 +87,8 @@ class BPnP(torch.autograd.Function):
             inv_J_fy = torch.inverse(J_fy)
 
             J_yx = (-1) * torch.mm(inv_J_fy, J_fx)
-            J_yx = J_yx.div(torch.norm(J_yx.view(-1), dim=0))  # normalize the Jacobian of y wrt x
             J_yz = (-1) * torch.mm(inv_J_fy, J_fz)
-            J_yz = J_yz.div(torch.norm(J_yz.view(-1), dim=0))  # normalize the Jacobian of y wrt M
             J_yK = (-1) * torch.mm(inv_J_fy, J_fK)
-            J_yK = J_yK.div(torch.norm(J_yK.view(-1), dim=0))  # normalize the Jacobian of y wrt K
 
             grad_x[i] = grad_output[i].view(1,m).mm(J_yx).view(n,2)
             grad_z += grad_output[i].view(1,m).mm(J_yz).view(n,3)
@@ -105,14 +102,13 @@ def get_coefs(P_6d, pts3d, K):
     m = P_6d.size(-1)
     coefs = torch.zeros(n,2,m,device=device)
     torch.set_grad_enabled(True)
-    y = P_6d.clone().detach().requires_grad_()
+    y = P_6d.clone().repeat(n,1).detach().requires_grad_()
     proj = batch_project(y, pts3d.detach(), K.detach()).squeeze()
-    for i in range(n):
-        for k in range(2):
-            torch.set_grad_enabled(True)
-            proj[i,k].backward(retain_graph=True)
-            coefs[i,k,:] = -2*y.grad.clone()
-            y.grad.zero_()
+    vec = torch.diag(torch.ones(n,device=device).float())
+    for k in range(2):
+        torch.set_grad_enabled(True)
+        y_grad = torch.autograd.grad(proj[:,:,k],y,vec, retain_graph=True)
+        coefs[:,k,:] = -2*y_grad[0].clone()
     return coefs
 
 def batch_project(P, pts3d, K, angle_axis=True):

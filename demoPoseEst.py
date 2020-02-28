@@ -31,15 +31,15 @@ ite = 2000
 
 # pts2d = pts2d_gt.clone() + 100*torch.randn_like(pts2d_gt)
 # pts2d.requires_grad_()
-# optimizer = torch.optim.Adam([{'params':pts2d}], lr=2)
+# optimizer = torch.optim.SGD([{'params':pts2d}], lr=0.2)
 
 model = torchvision.models.vgg11()
 model.classifier = torch.nn.Linear(25088,n*2)
 model.cuda()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.000002)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.000004)
 
 ini_pose = torch.zeros(1,6, device=device)
-ini_pose[0,5] = 999
+ini_pose[0,5] = 99
 losses = []
 track_2d = np.empty([ite,n,2])
 track_2d_pro = np.empty([ite,n,2])
@@ -70,7 +70,7 @@ for i in range(ite):
     losses.append(loss.item())
     track_2d_pro[i, :, :] = pts2d_pro.clone().cpu().detach().numpy()
 
-    if loss.item() < 0.0001:
+    if loss.item() < 0.001:
         break
     ini_pose = P_out.detach()
 

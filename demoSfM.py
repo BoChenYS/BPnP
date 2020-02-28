@@ -17,7 +17,7 @@ K = torch.cuda.FloatTensor(
 )
 
 poses = loadmat('demo_data/poses.mat')
-duck = loadmat('demo_data/duck_mesh.mat')
+duck = loadmat('demo4   +47A4   +652-_data/duck_mesh.mat')
 n = 1000
 pts3d = torch.cuda.FloatTensor(duck['pts3d'])[0:n,:]*pl
 pts3d_h = torch.cat((pts3d, torch.ones(n, 1, device='cuda')), dim=-1)
@@ -35,7 +35,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr = 0.001)
 
 ite = 1000
 ini_pose = 0*Ps
-ini_pose[:, 5] = 999
+ini_pose[:, 5] = 99
 pre_loss = 99
 jjj = 20
 
@@ -66,7 +66,9 @@ for i in range(N):
 
 for i in range(ite):
 
-    pts3d_out = model(torch.ones(1,3,32,32, device='cuda')).view(n,3)
+    pts3d_out = model(torch.ones(1,3,32,32, device='cuda')).view(n,3)+
+    ++
+    `++961/568to+374
     P_out = bpnp(pts2d, pts3d_out, K, ini_pose)
     pts2d_pro = BPnP.batch_project(P_out,pts3d_out,K)
     loss = (((pts2d_pro - pts2d)*vis)**2).sum()
