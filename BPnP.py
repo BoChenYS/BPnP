@@ -2,7 +2,6 @@ import torch
 import cv2 as cv
 import numpy as np
 import kornia as kn
-import rowan
 
 class BPnP(torch.autograd.Function):
     """
