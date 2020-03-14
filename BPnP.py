@@ -13,7 +13,7 @@ class BPnP(torch.autograd.Function):
         n = pts2d.size(1)
         device = pts2d.device
         pts3d_np = np.array(pts3d.detach().cpu())
-        K_np = np.array(K.cpu())
+        K_np = np.array(K.detach().cpu())
         P_6d = torch.zeros(bs,6,device=device)
 
         for i in range(bs):
@@ -158,7 +158,7 @@ class BPnP_m3d(torch.autograd.Function):
         bs = pts2d.size(0)
         n = pts2d.size(1)
         device = pts2d.device
-        K_np = np.array(K.cpu())
+        K_np = np.array(K.detach().cpu())
         P_6d = torch.zeros(bs,6,device=device)
 
         for i in range(bs):

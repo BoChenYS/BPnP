@@ -42,8 +42,8 @@ track_Ks = np.empty([ite,4])
 for i in range(ite):
 
     cp = 1000*torch.sigmoid(theta)
-    row1 = torch.cat((cp[0].view(1),torch.zeros(1,device='cuda').requires_grad_(),cp[2].view(1)),dim=-1).view(1,3)
-    row2 = torch.cat((torch.zeros(1,device='cuda').requires_grad_(),cp[1].view(1),cp[3].view(1)),dim=-1).view(1,3)
+    row1 = torch.cat((cp[0].view(1),torch.zeros(1,device=device).requires_grad_(),cp[2].view(1)),dim=-1).view(1,3)
+    row2 = torch.cat((torch.zeros(1,device=device).requires_grad_(),cp[1].view(1),cp[3].view(1)),dim=-1).view(1,3)
     row3 = torch.tensor([[0,0,1]], device=device, dtype=torch.float).requires_grad_()
     K_out = torch.cat((row1,row2,row3),dim=0)
 
