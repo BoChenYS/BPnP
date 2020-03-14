@@ -35,7 +35,7 @@ ite = 2000
 
 model = torchvision.models.vgg11()
 model.classifier = torch.nn.Linear(25088,n*2)
-model.cuda()
+model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.000004)
 
 ini_pose = torch.zeros(1,6, device=device)

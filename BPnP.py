@@ -149,86 +149,30 @@ def P6d2PM(P6d):
     PM = torch.cat((PM[:,0:3,0:3].view(bs,3,3),T),dim=-1)
     return PM
 
-class BPnP_robust(torch.autograd.Function):
+class BPnP_m3d(torch.autograd.Function):
     """
-    Back-propagatable PnP, robust version, for the case of poor 2d-3d correspondences in early stage of training, by doing RANSAC every time.
+    Like BPnP but supports multiple 3d models
     """
     @staticmethod
-    def forward(ctx, pts2d, pts3d, K, ini_pose=None, prevent_deteriorate=True):
+    def forward(ctx, pts2d, pts3d, K, ini_pose=None):
         bs = pts2d.size(0)
         n = pts2d.size(1)
         device = pts2d.device
-        pts3d_np = np.array(pts3d.detach().cpu())
         K_np = np.array(K.cpu())
         P_6d = torch.zeros(bs,6,device=device)
 
         for i in range(bs):
             pts2d_i_np = np.ascontiguousarray(pts2d[i].detach().cpu()).reshape((n,1,2))
-
-            _, rvec0r, T0r, _ = cv.solvePnPRansac(objectPoints=pts3d_np, imagePoints=pts2d_i_np, cameraMatrix=K_np,
-                                                distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, confidence=0.9999,
-                                                reprojectionError=20)
-            angle_axis0r = torch.tensor(rvec0r, device=device, dtype=torch.float).view(1, 3)
-            tra0r = torch.tensor(T0r, device=device, dtype=torch.float).view(1, 3)
-            P_6d_0r = torch.cat((angle_axis0r, tra0r), dim=-1)
-            res0r, feas0r = get_res(pts2d[i], pts3d, K, P_6d_0r)
-
+            pts3d_i_np = np.ascontiguousarray(pts3d[i].detach().cpu()).reshape((n,3))
             if ini_pose is None:
-                rvec0 = rvec0r
-                T0 = T0r
-                P_6d_i_before = P_6d_0r
-                res0 = res0r
-                feas0 = feas0r
+                _, rvec0, T0, _ = cv.solvePnPRansac(objectPoints=pts3d_i_np, imagePoints=pts2d_i_np, cameraMatrix=K_np, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, confidence=0.9999 ,reprojectionError=1)
             else:
-                res0i, feas0i = get_res(pts2d[i], pts3d, K, ini_pose[i].view(1,6))
-                if feas0r and not feas0i:
-                    rvec0 = rvec0r
-                    T0 = T0r
-                    P_6d_i_before = P_6d_0r
-                    res0 = res0r
-                    feas0 = feas0r
-                elif feas0i and not feas0r:
-                    rvec0 = np.array(ini_pose[i, 0:3].cpu().view(3, 1))
-                    T0 = np.array(ini_pose[i, 3:6].cpu().view(3, 1))
-                    P_6d_i_before = ini_pose[i].view(1,6)
-                    res0 = res0i
-                    feas0 = feas0i
-                else:
-                    if res0i < res0r:
-                        rvec0 = np.array(ini_pose[i, 0:3].cpu().view(3, 1))
-                        T0 = np.array(ini_pose[i, 3:6].cpu().view(3, 1))
-                        P_6d_i_before = ini_pose[i].view(1,6)
-                        res0 = res0i
-                        feas0 = feas0i
-                    else:
-                        rvec0 = rvec0r
-                        T0 = T0r
-                        P_6d_i_before = P_6d_0r
-                        res0 = res0r
-                        feas0 = feas0r
-
-            _, rvec, T = cv.solvePnP(objectPoints=pts3d_np, imagePoints=pts2d_i_np, cameraMatrix=K_np, distCoeffs=None,
-                                     flags=cv.SOLVEPNP_ITERATIVE, useExtrinsicGuess=True, rvec=np.copy(rvec0),
-                                     tvec=np.copy(T0))
-
-            if prevent_deteriorate==True:
-                angle_axis = torch.tensor(rvec, device=device, dtype=torch.float).view(1, 3)
-                tra = torch.tensor(T, device=device, dtype=torch.float).view(1, 3)
-                P_6d_i_after =  torch.cat((angle_axis,tra),dim=-1)
-                res, feas = get_res(pts2d[i], pts3d, K, P_6d_i_after)
-                if feas0 and not feas:
-                    P_6d[i, :] = P_6d_i_before
-                elif feas and not feas0:
-                    P_6d[i, :] = P_6d_i_after
-                else:
-                    if res <= res0:
-                        P_6d[i,:] = P_6d_i_after
-                    else:
-                        P_6d[i, :] = P_6d_i_before
-            else:
-                angle_axis = torch.tensor(rvec, device=device, dtype=torch.float).view(1, 3)
-                T = torch.tensor(T, device=device, dtype=torch.float).view(1, 3)
-                P_6d[i, :] = torch.cat((angle_axis,T),dim=-1)
+                rvec0 = np.array(ini_pose[i, 0:3].cpu().view(3, 1))
+                T0 = np.array(ini_pose[i, 3:6].cpu().view(3, 1))
+            _, rvec, T = cv.solvePnP(objectPoints=pts3d_i_np, imagePoints=pts2d_i_np, cameraMatrix=K_np, distCoeffs=None, flags=cv.SOLVEPNP_ITERATIVE, useExtrinsicGuess=True, rvec=rvec0, tvec=T0)
+            angle_axis = torch.tensor(rvec,device=device,dtype=torch.float).view(1, 3)
+            T = torch.tensor(T,device=device,dtype=torch.float).view(1, 3)
+            P_6d[i,:] = torch.cat((angle_axis,T),dim=-1)
 
         ctx.save_for_backward(pts2d,P_6d,pts3d,K)
         return P_6d
@@ -252,11 +196,11 @@ class BPnP_robust(torch.autograd.Function):
             J_fz = torch.zeros(m,3*n, device=device)
             J_fK = torch.zeros(m, 9, device=device)
 
-            coefs = get_coefs(P_6d[i].view(1, 6), pts3d, K)
+            coefs = get_coefs(P_6d[i].view(1,6), pts3d[i], K)
 
             pts2d_flat = pts2d[i].clone().view(-1).detach().requires_grad_()
             P_6d_flat = P_6d[i].clone().view(-1).detach().requires_grad_()
-            pts3d_flat = pts3d.clone().view(-1).detach().requires_grad_()
+            pts3d_flat = pts3d[i].clone().view(-1).detach().requires_grad_()
             K_flat = K.clone().view(-1).detach().requires_grad_()
 
             for j in range(m):
@@ -288,14 +232,11 @@ class BPnP_robust(torch.autograd.Function):
             inv_J_fy = torch.inverse(J_fy)
 
             J_yx = (-1) * torch.mm(inv_J_fy, J_fx)
-            J_yx = J_yx.div(torch.norm(J_yx.view(-1), dim=0))  # normalize the Jacobian of y wrt x
             J_yz = (-1) * torch.mm(inv_J_fy, J_fz)
-            J_yz = J_yz.div(torch.norm(J_yz.view(-1), dim=0))  # normalize the Jacobian of y wrt M
             J_yK = (-1) * torch.mm(inv_J_fy, J_fK)
-            J_yK = J_yK.div(torch.norm(J_yK.view(-1), dim=0))  # normalize the Jacobian of y wrt K
 
             grad_x[i] = grad_output[i].view(1,m).mm(J_yx).view(n,2)
-            grad_z += grad_output[i].view(1,m).mm(J_yz).view(n,3)
+            grad_z[i] = grad_output[i].view(1,m).mm(J_yz).view(n,3)
             grad_K += grad_output[i].view(1,m).mm(J_yK).view(3,3)
 
         return grad_x, grad_z, grad_K, None
