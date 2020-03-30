@@ -6,6 +6,16 @@ import kornia as kn
 class BPnP(torch.autograd.Function):
     """
     Back-propagatable PnP
+    INPUTS:
+    pts2d - the 2D keypoints coordinates of size [batch_size, num_keypoints, 2]
+    pts3d - the 3D keypoints coordinates of size [num_keypoints, 3]
+    K     - the camera intrinsic matrix of size [3, 3]
+    OUTPUT:
+    P_6d  - the 6 DOF poses of size [batch_size, 6], where the first 3 elements of each row are the angle-axis rotation 
+    vector (Euler vector) and the last 3 elements are the translation vector. 
+    NOTE:
+    This BPnP function assumes that all sets of 2D points in the mini-batch correspond to one common set of 3D points. 
+    For situations where pts3d is also a mini-batch, use the BPnP_m3d class.
     """
     @staticmethod
     def forward(ctx, pts2d, pts3d, K, ini_pose=None):
@@ -95,63 +105,18 @@ class BPnP(torch.autograd.Function):
 
         return grad_x, grad_z, grad_K, None
 
-def get_coefs(P_6d, pts3d, K):
-    device = P_6d.device
-    n = pts3d.size(0)
-    m = P_6d.size(-1)
-    coefs = torch.zeros(n,2,m,device=device)
-    torch.set_grad_enabled(True)
-    y = P_6d.clone().repeat(n,1).detach().requires_grad_()
-    proj = batch_project(y, pts3d.detach(), K.detach()).squeeze()
-    vec = torch.diag(torch.ones(n,device=device).float())
-    for k in range(2):
-        torch.set_grad_enabled(True)
-        y_grad = torch.autograd.grad(proj[:,:,k],y,vec, retain_graph=True)
-        coefs[:,k,:] = -2*y_grad[0].clone()
-    return coefs
-
-def batch_project(P, pts3d, K, angle_axis=True):
-    n = pts3d.size(0)
-    bs = P.size(0)
-    device = P.device
-    pts3d_h = torch.cat((pts3d, torch.ones(n, 1, device=device)), dim=-1)
-    if angle_axis:
-        R_out = kn.angle_axis_to_rotation_matrix(P[:, 0:3].view(bs, 3))
-        PM = torch.cat((R_out[:,0:3,0:3], P[:, 3:6].view(bs, 3, 1)), dim=-1)
-    else:
-        PM = P
-    pts3d_cam = pts3d_h.matmul(PM.transpose(1,2))
-    pts2d_proj = pts3d_cam.matmul(K.t())
-    S = pts2d_proj[:,:, 2].view(bs, n, 1)
-    pts2d_pro = pts2d_proj[:,:,0:2].div(S)
-
-    return pts2d_pro
-
-def get_res(pts2d, pts3d, K, P):
-    n = pts2d.size(0)
-    m = 6
-    feas1 = P[0,m-1].item() > 0
-    R = kn.angle_axis_to_rotation_matrix(P[0, 0:m - 3].view(1, 3))
-    P = torch.cat((R[0, 0:3, 0:3].view(3, 3), P[0, m - 3:m].view(3, 1)), dim=-1)
-    pts3d_h = torch.cat((pts3d,torch.ones(n,1,device=pts3d.device)), dim=-1)
-    pts3d_cam = pts3d_h.mm(P.transpose(0, 1))
-    feas2 = (pts3d_cam[:,2].min().item() >= 0)
-    feas = feas1 and feas2
-    pts2d_proj = pts3d_cam.mm(K.transpose(0, 1))
-    S = pts2d_proj[:, 2].view(n, 1)
-    res = pts2d - pts2d_proj[:, 0:2].div(S)
-    return torch.norm(res,dim=1).sum().item(), feas
-
-def P6d2PM(P6d):
-    bs = P6d.size(0)
-    PM = kn.angle_axis_to_rotation_matrix(P6d[:,0:3].view(bs,3))
-    T = P6d[:,3:6].view(bs,3,1)
-    PM = torch.cat((PM[:,0:3,0:3].view(bs,3,3),T),dim=-1)
-    return PM
-
 class BPnP_m3d(torch.autograd.Function):
     """
-    Like BPnP but supports multiple 3d models
+    BPnP_m3d supports mini-batch intputs of 3D keypoints, where the i-th set of 2D keypoints correspond to the i-th set of 3D keypoints.
+    INPUTS:
+    pts2d - the 2D keypoints coordinates of size [batch_size, num_keypoints, 2]
+    pts3d - the 3D keypoints coordinates of size [batch_size, num_keypoints, 3]
+    K     - the camera intrinsic matrix of size [3, 3]
+    OUTPUT:
+    P_6d  - the 6 DOF poses of size [batch_size, 6], where the first 3 elements of each row are the angle-axis rotation 
+    vector (Euler vector) and the last 3 elements are the translation vector. 
+    NOTE:
+    For situations where all sets of 2D points in the mini-batch correspond to one common set of 3D points, use the BPnP class. 
     """
     @staticmethod
     def forward(ctx, pts2d, pts3d, K, ini_pose=None):
@@ -240,6 +205,61 @@ class BPnP_m3d(torch.autograd.Function):
             grad_K += grad_output[i].view(1,m).mm(J_yK).view(3,3)
 
         return grad_x, grad_z, grad_K, None
+
+def get_coefs(P_6d, pts3d, K):
+    device = P_6d.device
+    n = pts3d.size(0)
+    m = P_6d.size(-1)
+    coefs = torch.zeros(n,2,m,device=device)
+    torch.set_grad_enabled(True)
+    y = P_6d.clone().repeat(n,1).detach().requires_grad_()
+    proj = batch_project(y, pts3d.detach(), K.detach()).squeeze()
+    vec = torch.diag(torch.ones(n,device=device).float())
+    for k in range(2):
+        torch.set_grad_enabled(True)
+        y_grad = torch.autograd.grad(proj[:,:,k],y,vec, retain_graph=True)
+        coefs[:,k,:] = -2*y_grad[0].clone()
+    return coefs
+
+def batch_project(P, pts3d, K, angle_axis=True):
+    n = pts3d.size(0)
+    bs = P.size(0)
+    device = P.device
+    pts3d_h = torch.cat((pts3d, torch.ones(n, 1, device=device)), dim=-1)
+    if angle_axis:
+        R_out = kn.angle_axis_to_rotation_matrix(P[:, 0:3].view(bs, 3))
+        PM = torch.cat((R_out[:,0:3,0:3], P[:, 3:6].view(bs, 3, 1)), dim=-1)
+    else:
+        PM = P
+    pts3d_cam = pts3d_h.matmul(PM.transpose(1,2))
+    pts2d_proj = pts3d_cam.matmul(K.t())
+    S = pts2d_proj[:,:, 2].view(bs, n, 1)
+    pts2d_pro = pts2d_proj[:,:,0:2].div(S)
+
+    return pts2d_pro
+
+def get_res(pts2d, pts3d, K, P):
+    n = pts2d.size(0)
+    m = 6
+    feas1 = P[0,m-1].item() > 0
+    R = kn.angle_axis_to_rotation_matrix(P[0, 0:m - 3].view(1, 3))
+    P = torch.cat((R[0, 0:3, 0:3].view(3, 3), P[0, m - 3:m].view(3, 1)), dim=-1)
+    pts3d_h = torch.cat((pts3d,torch.ones(n,1,device=pts3d.device)), dim=-1)
+    pts3d_cam = pts3d_h.mm(P.transpose(0, 1))
+    feas2 = (pts3d_cam[:,2].min().item() >= 0)
+    feas = feas1 and feas2
+    pts2d_proj = pts3d_cam.mm(K.transpose(0, 1))
+    S = pts2d_proj[:, 2].view(n, 1)
+    res = pts2d - pts2d_proj[:, 0:2].div(S)
+    return torch.norm(res,dim=1).sum().item(), feas
+
+def P6d2PM(P6d):
+    bs = P6d.size(0)
+    PM = kn.angle_axis_to_rotation_matrix(P6d[:,0:3].view(bs,3))
+    T = P6d[:,3:6].view(bs,3,1)
+    PM = torch.cat((PM[:,0:3,0:3].view(bs,3,3),T),dim=-1)
+    return PM
+
 
 
 
