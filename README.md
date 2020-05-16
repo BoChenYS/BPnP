@@ -31,3 +31,12 @@ or
 ````bash
 python demoCamCali.py
 ````
+
+## Cite this work
+````
+@inproceedings{BPnP2020,
+    Author = {Chen, Bo and Parra, Alvaro and Cao, Jiewei and Li, Nan and Chin, Tat-Jun},
+    Title = {End-to-End Learnable Geometric Vision by Backpropagating PnP Optimization},
+    Booktitle = {CVPR},
+    Year = {2020}}
+````
