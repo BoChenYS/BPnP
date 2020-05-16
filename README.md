@@ -1,7 +1,7 @@
 This repo provides the code used in the paper
 # [End-to-End Learnable Geometric Vision by Backpropagating PnP Optimization (CVPR 2020)](https://arxiv.org/pdf/1909.06043.pdf)
 
-![](demo_data/cover.png)
+![](demo_data/cover.pdf)
 
 ## Install
 
