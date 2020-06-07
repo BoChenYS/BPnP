@@ -231,34 +231,12 @@ def batch_project(P, pts3d, K, angle_axis=True):
         PM = torch.cat((R_out[:,0:3,0:3], P[:, 3:6].view(bs, 3, 1)), dim=-1)
     else:
         PM = P
-    pts3d_cam = pts3d_h.matmul(PM.transpose(1,2))
+    pts3d_cam = pts3d_h.matmul(PM.transpose(-2,-1))
     pts2d_proj = pts3d_cam.matmul(K.t())
     S = pts2d_proj[:,:, 2].view(bs, n, 1)
     pts2d_pro = pts2d_proj[:,:,0:2].div(S)
 
     return pts2d_pro
-
-def get_res(pts2d, pts3d, K, P):
-    n = pts2d.size(0)
-    m = 6
-    feas1 = P[0,m-1].item() > 0
-    R = kn.angle_axis_to_rotation_matrix(P[0, 0:m - 3].view(1, 3))
-    P = torch.cat((R[0, 0:3, 0:3].view(3, 3), P[0, m - 3:m].view(3, 1)), dim=-1)
-    pts3d_h = torch.cat((pts3d,torch.ones(n,1,device=pts3d.device)), dim=-1)
-    pts3d_cam = pts3d_h.mm(P.transpose(0, 1))
-    feas2 = (pts3d_cam[:,2].min().item() >= 0)
-    feas = feas1 and feas2
-    pts2d_proj = pts3d_cam.mm(K.transpose(0, 1))
-    S = pts2d_proj[:, 2].view(n, 1)
-    res = pts2d - pts2d_proj[:, 0:2].div(S)
-    return torch.norm(res,dim=1).sum().item(), feas
-
-def P6d2PM(P6d):
-    bs = P6d.size(0)
-    PM = kn.angle_axis_to_rotation_matrix(P6d[:,0:3].view(bs,3))
-    T = P6d[:,3:6].view(bs,3,1)
-    PM = torch.cat((PM[:,0:3,0:3].view(bs,3,3),T),dim=-1)
-    return PM
 
 
 
