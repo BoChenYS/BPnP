@@ -3,7 +3,8 @@ This repo provides the code used in the paper
 
 ![](demo_data/cover.png)
 
-[![Watch the video](https://i.imgur.com/vKb2F1B.png)](https://youtu.be/eYmoAAsiBEE)
+## Watch our video demo
+[![Watch the video](https://i9.ytimg.com/vi/eYmoAAsiBEE/mq3.jpg?sqp=CIzY-vsF&rs=AOn4CLDNO2n3txkRF7Rk8UM1xrP-qJI2Xg)](https://youtu.be/eYmoAAsiBEE)
 
 ## Install
 
