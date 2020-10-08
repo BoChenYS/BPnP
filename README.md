@@ -3,6 +3,9 @@ This repo provides the code used in the paper
 
 ![](demo_data/cover.png)
 
+## Watch our video demo
+[![Watch the video](demo_data/video.png)](https://youtu.be/eYmoAAsiBEE)
+
 ## Install
 
 `bash requirements.sh`
