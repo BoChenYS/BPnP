@@ -266,7 +266,7 @@ class BPnP_fast(torch.autograd.Function):
             J_fz = torch.zeros(m,3*n, device=device)
             J_fK = torch.zeros(m, 9, device=device)
 
-            coefs = get_coefs(P_6d[i].view(1,6), pts3d, K).detach()
+            coefs = get_coefs(P_6d[i].view(1,6), pts3d, K, create_graph=False).detach()
 
             pts2d_flat = pts2d[i].clone().view(-1).detach().requires_grad_()
             P_6d_flat = P_6d[i].clone().view(-1).detach().requires_grad_()
@@ -312,7 +312,7 @@ class BPnP_fast(torch.autograd.Function):
         return grad_x, grad_z, grad_K, None
 
 
-def get_coefs(P_6d, pts3d, K):
+def get_coefs(P_6d, pts3d, K, create_graph=True):
     device = P_6d.device
     n = pts3d.size(0)
     m = P_6d.size(-1)
@@ -323,7 +323,7 @@ def get_coefs(P_6d, pts3d, K):
     vec = torch.diag(torch.ones(n,device=device).float())
     for k in range(2):
         torch.set_grad_enabled(True)
-        y_grad = torch.autograd.grad(proj[:,:,k],y,vec, retain_graph=True, create_graph=True)
+        y_grad = torch.autograd.grad(proj[:,:,k],y,vec, retain_graph=True, create_graph=create_graph)
         coefs[:,k,:] = -2*y_grad[0].clone()
     return coefs
 
